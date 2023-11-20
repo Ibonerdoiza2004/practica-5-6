@@ -3,6 +3,7 @@ package practica5_6;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -31,6 +32,7 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
 
 public class Ventana extends JFrame {
 	protected static JTextArea tArea = new JTextArea();
@@ -46,8 +48,10 @@ public class Ventana extends JFrame {
     protected static JTable tabla;
     protected static JTextField tFieldEtiqueta = new JTextField();
     protected static JTree tree = new JTree();
-    protected static JScrollPane sPaneTree = new JScrollPane();
+    protected static JScrollPane sPaneTree;
     protected static int filaEnTabla = -1;
+    protected static DefaultMutableTreeNode raiz = null;
+	protected static DefaultTreeModel modeloTree = null;
 	public Ventana(){
 		GestionTwitter.consola =false;
 		tArea.setEditable(false);
@@ -119,6 +123,31 @@ public class Ventana extends JFrame {
 		setTabla();
 		add(sPaneTabla, BorderLayout.EAST);
 		revalidate();
+		tree = new JTree(modeloTree);
+		sPaneTree = new JScrollPane(tree);
+		sPaneTree.setPreferredSize(new Dimension(500,getHeight()));
+		add(sPaneTree, BorderLayout.WEST);
+		revalidate();
+		tree.addTreeSelectionListener(new TreeSelectionListener() {
+			@Override
+			public void valueChanged(TreeSelectionEvent e) {
+				if(((DefaultMutableTreeNode)tree.getLastSelectedPathComponent()).isLeaf()) {
+					System.out.println("AAA");
+					DefaultMutableTreeNode nuevaRaiz = (DefaultMutableTreeNode)tree.getLastSelectedPathComponent();
+					UsuarioTwitter nuevoUsuarioRaiz = GestionTwitter.usuariosPorNick.get((String)nuevaRaiz.getUserObject());
+					for(String idUsuario : nuevoUsuarioRaiz.friends) {
+						if(GestionTwitter.usuariosPorID.containsKey(idUsuario)) {
+							UsuarioTwitter amigo = GestionTwitter.usuariosPorID.get(idUsuario);
+							DefaultMutableTreeNode nuevo = new DefaultMutableTreeNode(amigo.screenName);
+							nuevaRaiz.add(nuevo);
+							modeloTree.nodesWereInserted( nuevaRaiz, new int[] { nuevaRaiz.getChildCount()-1 } );
+						}
+					}
+					TreePath path = new TreePath(nuevaRaiz.getPath());
+					tree.expandPath(path);
+				}
+			}
+		});
 		
 		
 		
@@ -194,27 +223,33 @@ public class Ventana extends JFrame {
 			public void mouseClicked(MouseEvent e) {
 				filaEnTabla = tabla.rowAtPoint( e.getPoint() );
 				if(filaEnTabla!=-1) {
+					System.out.println("Hola");
 					setTree();
+					
 				}
 			}
 		});
 		sPaneTabla = new JScrollPane(tabla);
 	}
 	protected void setTree() {
-		DefaultMutableTreeNode raiz = new DefaultMutableTreeNode(tabla.getValueAt(filaEnTabla, 1));
-		DefaultTreeModel modelo = new DefaultTreeModel(raiz);
-		tree.setModel(modelo);
-		UsuarioTwitter usuarioRaiz = GestionTwitter.usuariosPorNick.get(tabla.getValueAt(filaEnTabla, 1));
-		for(String idUsuario : usuarioRaiz.friends) {
-			//
-		}
-		tree.addTreeSelectionListener(new TreeSelectionListener() {
-		
-			@Override
-			public void valueChanged(TreeSelectionEvent e) {
-				
+		if (filaEnTabla!=-1) {
+			raiz = new DefaultMutableTreeNode(tabla.getValueAt(filaEnTabla, 1));
+			modeloTree = new DefaultTreeModel(raiz);
+			tree.setModel(modeloTree);
+			UsuarioTwitter usuarioRaiz = GestionTwitter.usuariosPorNick.get(tabla.getValueAt(filaEnTabla, 1));
+			System.out.println(usuarioRaiz);
+			for(String idUsuario : usuarioRaiz.friends) {
+				if(GestionTwitter.usuariosPorID.containsKey(idUsuario)) {
+					System.out.println(idUsuario);
+					UsuarioTwitter amigo = GestionTwitter.usuariosPorID.get(idUsuario);
+					DefaultMutableTreeNode nuevo = new DefaultMutableTreeNode(amigo.screenName);
+					raiz.add(nuevo);
+					modeloTree.nodesWereInserted( raiz, new int[] { raiz.getChildCount()-1 } );
+				}
 			}
-		});
+			revalidate();
+			repaint();
+		}
 		
 	}
 	
